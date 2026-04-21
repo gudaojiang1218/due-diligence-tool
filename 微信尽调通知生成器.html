@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>微信尽调通知生成器</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    background: #f5f5f5;
+    color: #333;
+    min-height: 100vh;
+    padding-bottom: 30px;
+  }
+
+  .header {
+    background: linear-gradient(135deg, #07c160, #05a050);
+    color: white;
+    padding: 16px 20px;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  .header h1 { font-size: 18px; font-weight: 600; }
+  .header p { font-size: 12px; opacity: 0.9; margin-top: 2px; }
+
+  .container {
+    padding: 12px;
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .card {
+    background: white;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #07c160;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #e8f5e9;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .form-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 100px;
+  }
+  .form-group label {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+  .form-group input, .form-group select, .form-group textarea {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    color: #333;
+    outline: none;
+    transition: border-color 0.2s;
+    background: #fafafa;
+    font-family: inherit;
+    -webkit-appearance: none;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    border-color: #07c160;
+    background: white;
+  }
+
+  /* ===== 行程条目 ===== */
+  .schedule-item {
+    background: #f8fff8;
+    border: 1px solid #c8e6c9;
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 12px;
+    position: relative;
+  }
+  .schedule-item-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .schedule-num {
+    font-size: 12px;
+    font-weight: 600;
+    color: #07c160;
+    background: #e8f5e9;
+    padding: 2px 10px;
+    border-radius: 12px;
+  }
+
+  /* ===== 联系方式条目 ===== */
+  .contact-item {
+    background: #fff8f0;
+    border: 1px solid #ffe0b2;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 10px;
+    position: relative;
+  }
+
+  /* ===== 按钮 ===== */
+  .btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+    font-family: inherit;
+    -webkit-appearance: none;
+  }
+  .btn-add {
+    background: #e8f5e9;
+    color: #07c160;
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 4px;
+    border: 1px dashed #a5d6a7;
+  }
+  .btn-add:active { background: #c8e6c9; }
+  .btn-del {
+    background: #ffebee;
+    color: #e53935;
+    padding: 4px 12px;
+    font-size: 12px;
+  }
+  .btn-del:active { background: #ffcdd2; }
+  .btn-generate {
+    background: linear-gradient(135deg, #07c160, #05a050);
+    color: white;
+    width: 100%;
+    padding: 16px;
+    font-size: 16px;
+    border-radius: 10px;
+    letter-spacing: 1px;
+    margin-top: 8px;
+    box-shadow: 0 4px 12px rgba(7,193,96,0.3);
+  }
+  .btn-generate:active { transform: scale(0.98); }
+  .btn-copy {
+    background: #07c160;
+    color: white;
+    width: 100%;
+    padding: 14px;
+    font-size: 15px;
+    border-radius: 10px;
+    margin-top: 12px;
+  }
+  .btn-copy:active { background: #05a050; }
+  .btn-copy.copied { background: #757575; }
+
+  /* ===== 预览区 ===== */
+  .preview-box {
+    background: #fafafa;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 16px;
+    margin-top: 12px;
+  }
+  .preview-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: #666;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  #preview-content {
+    background: white;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 14px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: #333;
+    min-height: 120px;
+  }
+  .placeholder-tip {
+    color: #bbb;
+    font-size: 13px;
+    text-align: center;
+    padding: 40px 0;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 24px;
+    font-size: 14px;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 999;
+    white-space: nowrap;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* 微信风格底部安全区 */
+  .safe-area { height: env(safe-area-inset-bottom); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>📋 微信尽调通知生成器</h1>
+  <p>填写信息，一键生成可直接发送的微信通知</p>
+</div>
+
+<div class="container">
+
+  <!-- 基本信息 -->
+  <div class="card">
+    <div class="card-title">🏢 基本信息</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>金租/机构名称</label>
+        <input type="text" id="company" placeholder="">
+      </div>
+      <div class="form-group">
+        <label>尽调负责人</label>
+        <input type="text" id="person" placeholder="">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="min-width:80px;max-width:100px">
+        <label>问候语</label>
+        <select id="greeting">
+          <option value="">请选择</option>
+          <option value="上午好">上午好</option>
+          <option value="下午好">下午好</option>
+          <option value="晚上好">晚上好</option>
+          <option value="好">好</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>开头称呼</label>
+        <input type="text" id="salutation" placeholder="各位领导">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>目的城市</label>
+        <input type="text" id="cities" placeholder="">
+      </div>
+    </div>
+  </div>
+
+  <!-- 行程安排 -->
+  <div class="card">
+    <div class="card-title">📅 行程安排</div>
+    <div id="schedule-list"></div>
+    <button class="btn btn-add" onclick="addSchedule()">＋ 添加行程</button>
+  </div>
+
+  <!-- 联系方式 -->
+  <div class="card">
+    <div class="card-title">📞 对接联系方式</div>
+    <div id="contact-list"></div>
+    <button class="btn btn-add" onclick="addContact()">＋ 添加联系人</button>
+  </div>
+
+  <!-- 生成按钮 -->
+  <button class="btn btn-generate" onclick="generate()">✨ 生成通知文案</button>
+
+  <!-- 预览区 -->
+  <div class="card" id="preview-card" style="display:none">
+    <div class="preview-title">💬 预览结果</div>
+    <div id="preview-content"></div>
+    <button class="btn btn-copy" id="copy-btn" onclick="copyText()">📋 一键复制到剪贴板</button>
+  </div>
+
+</div>
+
+<div class="safe-area"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== 行程管理 =====
+let schedules = [];
+let contacts = [];
+let scheduleIdCounter = 0;
+let contactIdCounter = 0;
+
+function addSchedule(data) {
+  const id = ++scheduleIdCounter;
+  schedules.push(id);
+  const div = document.createElement('div');
+  div.className = 'schedule-item';
+  div.id = 'schedule-' + id;
+  div.innerHTML = `
+    <div class="schedule-item-header">
+      <span class="schedule-num">行程 ${schedules.length}</span>
+      <button class="btn btn-del" onclick="removeSchedule(${id})">删除</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:0.8">
+        <label>年</label>
+        <select id="s${id}_year">
+          <option value="">请选择</option>
+          <option value="2025" ${data?.year=='2025'?'selected':''}>2025</option>
+          <option value="2026" ${data?.year=='2026'?'selected':''}>2026</option>
+          <option value="2027" ${data?.year=='2027'?'selected':''}>2027</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:0.6">
+        <label>月</label>
+        <select id="s${id}_month">
+          <option value="">请选择</option>
+          <option value="1" ${data?.month=='1'?'selected':''}>1</option>
+          <option value="2" ${data?.month=='2'?'selected':''}>2</option>
+          <option value="3" ${data?.month=='3'?'selected':''}>3</option>
+          <option value="4" ${data?.month=='4'?'selected':''}>4</option>
+          <option value="5" ${data?.month=='5'?'selected':''}>5</option>
+          <option value="6" ${data?.month=='6'?'selected':''}>6</option>
+          <option value="7" ${data?.month=='7'?'selected':''}>7</option>
+          <option value="8" ${data?.month=='8'?'selected':''}>8</option>
+          <option value="9" ${data?.month=='9'?'selected':''}>9</option>
+          <option value="10" ${data?.month=='10'?'selected':''}>10</option>
+          <option value="11" ${data?.month=='11'?'selected':''}>11</option>
+          <option value="12" ${data?.month=='12'?'selected':''}>12</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:0.6">
+        <label>日</label>
+        <select id="s${id}_day">
+          <option value="">请选择</option>
+          <option value="1" ${data?.day=='1'?'selected':''}>1</option>
+          <option value="2" ${data?.day=='2'?'selected':''}>2</option>
+          <option value="3" ${data?.day=='3'?'selected':''}>3</option>
+          <option value="4" ${data?.day=='4'?'selected':''}>4</option>
+          <option value="5" ${data?.day=='5'?'selected':''}>5</option>
+          <option value="6" ${data?.day=='6'?'selected':''}>6</option>
+          <option value="7" ${data?.day=='7'?'selected':''}>7</option>
+          <option value="8" ${data?.day=='8'?'selected':''}>8</option>
+          <option value="9" ${data?.day=='9'?'selected':''}>9</option>
+          <option value="10" ${data?.day=='10'?'selected':''}>10</option>
+          <option value="11" ${data?.day=='11'?'selected':''}>11</option>
+          <option value="12" ${data?.day=='12'?'selected':''}>12</option>
+          <option value="13" ${data?.day=='13'?'selected':''}>13</option>
+          <option value="14" ${data?.day=='14'?'selected':''}>14</option>
+          <option value="15" ${data?.day=='15'?'selected':''}>15</option>
+          <option value="16" ${data?.day=='16'?'selected':''}>16</option>
+          <option value="17" ${data?.day=='17'?'selected':''}>17</option>
+          <option value="18" ${data?.day=='18'?'selected':''}>18</option>
+          <option value="19" ${data?.day=='19'?'selected':''}>19</option>
+          <option value="20" ${data?.day=='20'?'selected':''}>20</option>
+          <option value="21" ${data?.day=='21'?'selected':''}>21</option>
+          <option value="22" ${data?.day=='22'?'selected':''}>22</option>
+          <option value="23" ${data?.day=='23'?'selected':''}>23</option>
+          <option value="24" ${data?.day=='24'?'selected':''}>24</option>
+          <option value="25" ${data?.day=='25'?'selected':''}>25</option>
+          <option value="26" ${data?.day=='26'?'selected':''}>26</option>
+          <option value="27" ${data?.day=='27'?'selected':''}>27</option>
+          <option value="28" ${data?.day=='28'?'selected':''}>28</option>
+          <option value="29" ${data?.day=='29'?'selected':''}>29</option>
+          <option value="30" ${data?.day=='30'?'selected':''}>30</option>
+          <option value="31" ${data?.day=='31'?'selected':''}>31</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:0.8">
+        <label>星期</label>
+        <select id="s${id}_week">
+          <option value="">请选择</option>
+          <option value="周一" ${data?.week=='周一'?'selected':''}>周一</option>
+          <option value="周二" ${data?.week=='周二'?'selected':''}>周二</option>
+          <option value="周三" ${data?.week=='周三'?'selected':''}>周三</option>
+          <option value="周四" ${data?.week=='周四'?'selected':''}>周四</option>
+          <option value="周五" ${data?.week=='周五'?'selected':''}>周五</option>
+          <option value="周六" ${data?.week=='周六'?'selected':''}>周六</option>
+          <option value="周日" ${data?.week=='周日'?'selected':''}>周日</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:1">
+        <label>时间</label>
+        <select id="s${id}_time">
+          <option value="">请选择</option>
+          <option value="08:00" ${data?.time=='08:00'?'selected':''}>08:00</option>
+          <option value="08:30" ${data?.time=='08:30'?'selected':''}>08:30</option>
+          <option value="09:00" ${data?.time=='09:00'?'selected':''}>09:00</option>
+          <option value="09:30" ${data?.time=='09:30'?'selected':''}>09:30</option>
+          <option value="10:00" ${data?.time=='10:00'?'selected':''}>10:00</option>
+          <option value="10:30" ${data?.time=='10:30'?'selected':''}>10:30</option>
+          <option value="11:00" ${data?.time=='11:00'?'selected':''}>11:00</option>
+          <option value="11:30" ${data?.time=='11:30'?'selected':''}>11:30</option>
+          <option value="12:00" ${data?.time=='12:00'?'selected':''}>12:00</option>
+          <option value="13:00" ${data?.time=='13:00'?'selected':''}>13:00</option>
+          <option value="13:30" ${data?.time=='13:30'?'selected':''}>13:30</option>
+          <option value="14:00" ${data?.time=='14:00'?'selected':''}>14:00</option>
+          <option value="14:30" ${data?.time=='14:30'?'selected':''}>14:30</option>
+          <option value="15:00" ${data?.time=='15:00'?'selected':''}>15:00</option>
+          <option value="15:30" ${data?.time=='15:30'?'selected':''}>15:30</option>
+          <option value="16:00" ${data?.time=='16:00'?'selected':''}>16:00</option>
+          <option value="16:30" ${data?.time=='16:30'?'selected':''}>16:30</option>
+          <option value="17:00" ${data?.time=='17:00'?'selected':''}>17:00</option>
+          <option value="17:30" ${data?.time=='17:30'?'selected':''}>17:30</option>
+          <option value="18:00" ${data?.time=='18:00'?'selected':''}>18:00</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>地点描述</label>
+        <input type="text" id="s${id}_place" placeholder="" value="${data?.place||''}">
+      </div>
+      <div class="form-group">
+        <label>事项类型</label>
+        <input type="text" id="s${id}_type" placeholder="" value="${data?.type||''}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>参与人员描述</label>
+        <input type="text" id="s${id}_members" placeholder="" value="${data?.members||''}">
+      </div>
+    </div>
+  `;
+  document.getElementById('schedule-list').appendChild(div);
+}
+
+function removeSchedule(id) {
+  const idx = schedules.indexOf(id);
+  if (idx > -1) schedules.splice(idx, 1);
+  const el = document.getElementById('schedule-' + id);
+  if (el) el.remove();
+  refreshScheduleNums();
+}
+
+function refreshScheduleNums() {
+  schedules.forEach((id, i) => {
+    const el = document.querySelector('#schedule-' + id + ' .schedule-num');
+    if (el) el.textContent = '行程 ' + (i + 1);
+  });
+}
+
+// ===== 联系方式管理 =====
+function addContact(data) {
+  const id = ++contactIdCounter;
+  contacts.push(id);
+  const div = document.createElement('div');
+  div.className = 'contact-item';
+  div.id = 'contact-' + id;
+  div.innerHTML = `
+    <div class="form-row" style="align-items:flex-end;margin-bottom:0">
+      <div class="form-group" style="flex:1.2">
+        <label>对接描述</label>
+        <input type="text" id="c${id}_label" placeholder="" value="${data?.label||''}">
+      </div>
+      <div class="form-group" style="flex:0.8">
+        <label>姓名</label>
+        <input type="text" id="c${id}_name" placeholder="" value="${data?.name||''}">
+      </div>
+      <div class="form-group" style="flex:1.2">
+        <label>电话</label>
+        <input type="text" id="c${id}_phone" placeholder="" value="${data?.phone||''}">
+      </div>
+      <div class="form-group" style="flex:0">
+        <button class="btn btn-del" onclick="removeContact(${id})" style="margin-top:0">删除</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('contact-list').appendChild(div);
+}
+
+function removeContact(id) {
+  const idx = contacts.indexOf(id);
+  if (idx > -1) contacts.splice(idx, 1);
+  const el = document.getElementById('contact-' + id);
+  if (el) el.remove();
+}
+
+// ===== 生成文案 =====
+function generate() {
+  const salutation = v('salutation') || '各位领导';
+  const greeting   = v('greeting')  || '下午好';
+  const company    = v('company')   || '金租机构';
+  const person     = v('person')    || '负责人';
+  const cities     = v('cities')    || '';
+
+  let text = `${salutation}，${greeting}！\n\n`;
+  text += `  为顺利推进项目合作事宜，本次由${company} ${person}前往${cities}两地开展现场尽调及面访工作，具体行程安排如下，烦请各位知悉并提前做好对接准备：\n`;
+
+  schedules.forEach(id => {
+    const year    = v(`s${id}_year`);
+    const month   = v(`s${id}_month`);
+    const day     = v(`s${id}_day`);
+    const week    = v(`s${id}_week`);
+    const time    = v(`s${id}_time`);
+    const place   = v(`s${id}_place`);
+    const type    = v(`s${id}_type`);
+    const members = v(`s${id}_members`);
+    const dateStr = (year && month && day) ? `${year}年${month}月${day}日` : '';
+    if (dateStr || place) {
+      text += `\n📅 ${dateStr}（${week}）${time}\n`;
+      text += `${place}${type}\n`;
+      text += `参与人员：${members}\n`;
+    }
+  });
+
+  text += `\n📞 对接联系方式\n`;
+  contacts.forEach(id => {
+    const label = v(`c${id}_label`);
+    const name  = v(`c${id}_name`);
+    const phone = v(`c${id}_phone`);
+    if (label || name || phone) {
+      text += `${label}：${name} ${phone}\n`;
+    }
+  });
+
+  text += `\n感谢各位的支持与配合，预祝本次尽调工作顺利开展！`;
+
+  document.getElementById('preview-card').style.display = 'block';
+  const box = document.getElementById('preview-content');
+  box.textContent = text;
+  
+  const copyBtn = document.getElementById('copy-btn');
+  copyBtn.textContent = '📋 一键复制到剪贴板';
+  copyBtn.className = 'btn btn-copy';
+
+  // 滚动到预览区
+  setTimeout(() => {
+    document.getElementById('preview-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 100);
+
+  showToast('✅ 文案已生成！');
+}
+
+function v(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+
+// ===== 复制 =====
+function copyText() {
+  const text = document.getElementById('preview-content').textContent;
+  if (!text) { showToast('请先生成文案'); return; }
+  
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '✅ 已复制！';
+    btn.className = 'btn btn-copy copied';
+    showToast('📋 已复制，可直接粘贴到微信！');
+    setTimeout(() => {
+      btn.textContent = '📋 一键复制到剪贴板';
+      btn.className = 'btn btn-copy';
+    }, 2500);
+  }).catch(() => {
+    // 兼容旧浏览器
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('📋 已复制！');
+  });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ===== 初始化 =====
+window.onload = function () {
+  // 页面初始为空，不自动添加任何行程和联系人
+};
+</script>
+</body>
+</html>
